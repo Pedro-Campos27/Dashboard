@@ -135,7 +135,7 @@ def read_csv_raw(file, preferred_value_col: Optional[str] = None) -> pd.DataFram
             "Nomeie algo como 'temperatura_*' ou 'temp_*', ou escolha manualmente no fallback."
         )
 
-    # limpa e força numérico (virgula decimal, espaços, etc.)
+    # limpa e força numérico (vírgula decimal, espaços, etc.)
     vals = (
         df[value_col]
         .astype(str)
@@ -153,14 +153,13 @@ def read_csv_raw(file, preferred_value_col: Optional[str] = None) -> pd.DataFram
     )
     return out
 
-
 def resample_stat_per_sensor(df_all: pd.DataFrame, period: str, stat: str) -> pd.DataFrame:
     out: List[pd.DataFrame] = []
 
     for sensor in df_all["sensor"].unique():
         cur = df_all[df_all["sensor"] == sensor][["timestamp", "value"]].copy()
 
-        # garante datetime index e numerico
+        # garante datetime index e numérico
         if not pd.api.types.is_datetime64_any_dtype(cur["timestamp"]):
             cur["timestamp"] = pd.to_datetime(cur["timestamp"], errors="coerce")
         cur["value"] = pd.to_numeric(cur["value"], errors="coerce")
@@ -171,7 +170,7 @@ def resample_stat_per_sensor(df_all: pd.DataFrame, period: str, stat: str) -> pd
 
         cur = cur.set_index("timestamp")
 
-        # aplica a estatística na SÉRIE (evita dtype object do DF com colunas não numéricas)
+        # aplica a estatística na SÉRIE
         resampler = cur["value"].resample(period)
         if stat == "mean":
             r = resampler.mean()
@@ -198,9 +197,7 @@ def resample_stat_per_sensor(df_all: pd.DataFrame, period: str, stat: str) -> pd
     return pd.concat(out, ignore_index=True)
 
 def apply_zscore_filter(df: pd.DataFrame, col="value", threshold=3.0):
-    """
-    Remove outliers por sensor usando z-score simétrico.
-    """
+    """Remove outliers por sensor usando z-score simétrico."""
     if df.empty:
         return df, 0
     kept, removed = [], 0
@@ -229,7 +226,6 @@ def interpolate_small_gaps(df: pd.DataFrame, freq_str: str, limit_minutes=5):
         out.append(cur)
 
     return pd.concat(out, ignore_index=True)
-
 
 def kpi_completude(df: pd.DataFrame, start_dt: pd.Timestamp, end_dt: pd.Timestamp, period: str):
     if df.empty:
@@ -338,9 +334,8 @@ if run:
         df_all = interpolate_small_gaps(df_all, freq_str=period, limit_minutes=5)
         df_all = df_all.dropna(subset=["value"])
 
-    # 5) SELEÇÃO DE DISPOSITIVOS (pra overlay ficar limpinho)
+    # 5) SELEÇÃO DE DISPOSITIVOS
     sensores_disponiveis = sorted(df_all["sensor"].unique().tolist())
-   # st.multiselect.__doc__  # só pra agradar linters
     selected_sensors = st.multiselect(
         "Selecione os dispositivos a exibir (aplica em todas as abas abaixo):",
         options=sensores_disponiveis,
@@ -361,135 +356,135 @@ if run:
 
     # ------------------------- KPIs -------------------------
     with tab_kpi:
-     st.markdown("### Visão geral (por dispositivo)")
-    # Header compacto do contexto da consulta
-    c0, c1, c2, c3, c4 = st.columns([2,1,1,1,1])
-    c0.write(f"**Período:** {start_dt:%Y-%m-%d %H:%M} → {end_dt:%Y-%m-%d %H:%M}")
-    c1.metric("Amostragem", f"{statistic}/{period}")
-    c2.metric("Timezone", TZ)
-    c3.metric("Faixa alvo", f"{anvisa_min:.1f}–{anvisa_max:.1f} °C")
-    c4.metric("Outliers removidos", f"{removed}")
+        st.markdown("### Visão geral (por dispositivo)")
 
-    st.divider()
+        # Header compacto do contexto da consulta
+        c0, c1, c2, c3, c4 = st.columns([2,1,1,1,1])
+        c0.write(f"**Período:** {start_dt:%Y-%m-%d %H:%M} → {end_dt:%Y-%m-%d %H:%M}")
+        c1.metric("Amostragem", f"{statistic}/{period}")
+        c2.metric("Timezone", TZ)
+        c3.metric("Faixa alvo", f"{anvisa_min:.1f}–{anvisa_max:.1f} °C")
+        c4.metric("Outliers removidos", f"{removed}")
 
-    def classifica_status(pct_fora: float, maior_excursao: pd.Timedelta) -> tuple[str, str]:
-        """
-        Regras simples e objetivas:
-        - OK: fora <= 1% e maior excursão <= 5 min
-        - ATENÇÃO: fora <= 5% ou maior excursão <= 15 min
-        - CRÍTICO: acima disso
-        """
-        if pct_fora <= 1.0 and maior_excursao <= pd.to_timedelta("5min"):
-            return "OK", "🟢"
-        if pct_fora <= 5.0 or maior_excursao <= pd.to_timedelta("15min"):
-            return "ATENÇÃO", "🟡"
-        return "CRÍTICO", "🔴"
+        st.divider()
 
-    def sparkline(cur: pd.DataFrame) -> go.Figure:
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=cur["timestamp"], y=cur["value"], mode="lines",
-            line=dict(width=1.6), hoverinfo="skip", showlegend=False
-        ))
-        fig.add_hline(y=anvisa_min, line_width=1, line_color="#e53935")
-        fig.add_hline(y=anvisa_max, line_width=1, line_color="#fb8c00")
-        fig.update_layout(
-            margin=dict(l=0,r=0,t=0,b=0), height=80,
-            xaxis=dict(visible=False), yaxis=dict(visible=False),
-        )
-        return fig
+        def classifica_status(pct_fora: float, maior_excursao: pd.Timedelta) -> tuple[str, str]:
+            """
+            Regras simples e objetivas:
+            - OK: fora <= 1% e maior excursão <= 5 min
+            - ATENÇÃO: fora <= 5% ou maior excursão <= 15 min
+            - CRÍTICO: acima disso
+            """
+            if pct_fora <= 1.0 and maior_excursao <= pd.to_timedelta("5min"):
+                return "OK", "🟢"
+            if pct_fora <= 5.0 or maior_excursao <= pd.to_timedelta("15min"):
+                return "ATENÇÃO", "🟡"
+            return "CRÍTICO", "🔴"
 
-    # Tabela consolidada pra export/triagem rápida
-    resumo_rows = []
+        def sparkline(cur: pd.DataFrame) -> go.Figure:
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=cur["timestamp"], y=cur["value"], mode="lines",
+                line=dict(width=1.6), hoverinfo="skip", showlegend=False
+            ))
+            fig.add_hline(y=anvisa_min, line_width=1, line_color="#e53935")
+            fig.add_hline(y=anvisa_max, line_width=1, line_color="#fb8c00")
+            fig.update_layout(
+                margin=dict(l=0,r=0,t=0,b=0), height=80,
+                xaxis=dict(visible=False), yaxis=dict(visible=False),
+            )
+            return fig
 
-    # Um “cartão” por sensor, fácil de ler
-    for nome in df_all["sensor"].unique():
-        cur = df_all[df_all["sensor"] == nome].copy()
-        if cur.empty:
-            continue
+        # Tabela consolidada pra export/triagem rápida
+        resumo_rows = []
 
-        # KPIs de qualidade e conformidade
-        compl, exp, got, gap_total, gap_max = kpi_completude(cur, start_dt, end_dt, period)
-        in_ct, out_ct, dur_in, dur_out, out_blocks, out_max = kpi_anvisa(cur, anvisa_min, anvisa_max)
+        # Um “cartão” por sensor, fácil de ler
+        for nome in df_all["sensor"].unique():
+            cur = df_all[df_all["sensor"] == nome].copy()
+            if cur.empty:
+                continue
 
-        # Estatística básica da série
-        t_min = cur["value"].min()
-        t_p50 = cur["value"].median()
-        t_max = cur["value"].max()
-        std   = cur["value"].std(ddof=1)
-        pct_fora = (out_ct / max(in_ct + out_ct, 1)) * 100.0
+            # KPIs de qualidade e conformidade
+            compl, exp, got, gap_total, gap_max = kpi_completude(cur, start_dt, end_dt, period)
+            in_ct, out_ct, dur_in, dur_out, out_blocks, out_max = kpi_anvisa(cur, anvisa_min, anvisa_max)
 
-        status_txt, status_bullet = classifica_status(pct_fora, out_max)
+            # Estatística básica da série
+            t_min = cur["value"].min()
+            t_p50 = cur["value"].median()
+            t_max = cur["value"].max()
+            std   = cur["value"].std(ddof=1)
+            pct_fora = (out_ct / max(in_ct + out_ct, 1)) * 100.0
 
-        # Layout do cartão
-        box = st.container(border=True)
-        with box:
-            top = st.columns([3,1.2,1.2,1.2])
-            with top[0]:
-                st.subheader(f"{status_bullet} {nome}")
-                st.caption(f"Status: **{status_txt}** — {pct_fora:.1f}% fora • Maior excursão {fmt_td(out_max)}")
-            with top[1]:
-                st.metric("Completude", f"{compl:.2f}%", help=f"Esperado: {exp} • Recebido: {got}")
-            with top[2]:
-                st.metric("Tempo DENTRO", fmt_td(dur_in))
-            with top[3]:
-                st.metric("Tempo FORA", fmt_td(dur_out))
+            status_txt, status_bullet = classifica_status(pct_fora, out_max)
 
-            # Barras de % dentro/fora
-            dentro_pct = 100.0 - pct_fora
-            b1, b2 = st.columns([3,2])
-            with b1:
-                st.progress(min(max(dentro_pct/100.0, 0), 1.0), text=f"Dentro da faixa: {dentro_pct:.1f}%")
-            with b2:
-                st.progress(min(max(pct_fora/100.0, 0), 1.0), text=f"Fora da faixa: {pct_fora:.1f}%")
+            # Layout do cartão
+            box = st.container(border=True)
+            with box:
+                top = st.columns([3,1.2,1.2,1.2])
+                with top[0]:
+                    st.subheader(f"{status_bullet} {nome}")
+                    st.caption(f"Status: **{status_txt}** — {pct_fora:.1f}% fora • Maior excursão {fmt_td(out_max)}")
+                with top[1]:
+                    st.metric("Completude", f"{compl:.2f}%", help=f"Esperado: {exp} • Recebido: {got}")
+                with top[2]:
+                    st.metric("Tempo DENTRO", fmt_td(dur_in))
+                with top[3]:
+                    st.metric("Tempo FORA", fmt_td(dur_out))
 
-            # Mini sparkline + estatísticas rápidas
-            s1, s2, s3, s4 = st.columns([3,1,1,1])
-            with s1:
-                st.plotly_chart(sparkline(cur), use_container_width=True)
-            with s2:
-                st.metric("Mín (°C)", f"{t_min:.2f}")
-                st.metric("P50 (°C)", f"{t_p50:.2f}")
-            with s3:
-                st.metric("Máx (°C)", f"{t_max:.2f}")
-                st.metric("Desvio (°C)", f"{(0.0 if pd.isna(std) else std):.2f}")
-            with s4:
-                st.metric("Excursões", f"{out_blocks}")
-                st.metric("Maior excursão", fmt_td(out_max))
+                # Barras de % dentro/fora
+                dentro_pct = 100.0 - pct_fora
+                b1, b2 = st.columns([3,2])
+                with b1:
+                    st.progress(min(max(dentro_pct/100.0, 0), 1.0), text=f"Dentro da faixa: {dentro_pct:.1f}%")
+                with b2:
+                    st.progress(min(max(pct_fora/100.0, 0), 1.0), text=f"Fora da faixa: {pct_fora:.1f}%")
 
-            st.caption(f"Gaps totais: {fmt_td(gap_total)} • Maior gap: {fmt_td(gap_max)}")
-        st.write("")  # espaçamento
+                # Mini sparkline + estatísticas rápidas
+                s1, s2, s3, s4 = st.columns([3,1,1,1])
+                with s1:
+                    st.plotly_chart(sparkline(cur), use_container_width=True)
+                with s2:
+                    st.metric("Mín (°C)", f"{t_min:.2f}")
+                    st.metric("P50 (°C)", f"{t_p50:.2f}")
+                with s3:
+                    st.metric("Máx (°C)", f"{t_max:.2f}")
+                    st.metric("Desvio (°C)", f"{(0.0 if pd.isna(std) else std):.2f}")
+                with s4:
+                    st.metric("Excursões", f"{out_blocks}")
+                    st.metric("Maior excursão", fmt_td(out_max))
 
-        resumo_rows.append({
-            "sensor": nome,
-            "status": status_txt,
-            "% fora": round(pct_fora, 2),
-            "completude_%": compl,
-            "tempo_dentro": fmt_td(dur_in),
-            "tempo_fora": fmt_td(dur_out),
-            "excursões": out_blocks,
-            "maior_excursão": fmt_td(out_max),
-            "mín_°C": round(t_min, 2),
-            "p50_°C": round(t_p50, 2),
-            "máx_°C": round(t_max, 2),
-            "desvio_°C": round(0.0 if pd.isna(std) else float(std), 2),
-            "gaps_total": fmt_td(gap_total),
-            "maior_gap": fmt_td(gap_max),
-        })
+                st.caption(f"Gaps totais: {fmt_td(gap_total)} • Maior gap: {fmt_td(gap_max)}")
+            st.write("")  # espaçamento
 
-    st.markdown("### Tabela resumo (para triagem rápida)")
-    if resumo_rows:
-        df_resumo = pd.DataFrame(resumo_rows).sort_values(["status", "% fora", "sensor"])
-        st.dataframe(df_resumo, use_container_width=True)
-        st.download_button(
-            "Baixar resumo (CSV)",
-            df_resumo.to_csv(index=False).encode("utf-8"),
-            file_name="kpis_resumo.csv",
-            mime="text/csv",
-        )
-    else:
-        st.info("Sem dados para resumir.")
+            resumo_rows.append({
+                "sensor": nome,
+                "status": status_txt,
+                "% fora": round(pct_fora, 2),
+                "completude_%": compl,
+                "tempo_dentro": fmt_td(dur_in),
+                "tempo_fora": fmt_td(dur_out),
+                "excursões": out_blocks,
+                "maior_excursão": fmt_td(out_max),
+                "mín_°C": round(t_min, 2),
+                "p50_°C": round(t_p50, 2),
+                "máx_°C": round(t_max, 2),
+                "desvio_°C": round(0.0 if pd.isna(std) else float(std), 2),
+                "gaps_total": fmt_td(gap_total),
+                "maior_gap": fmt_td(gap_max),
+            })
 
+        st.markdown("### Tabela resumo (para triagem rápida)")
+        if resumo_rows:
+            df_resumo = pd.DataFrame(resumo_rows).sort_values(["status", "% fora", "sensor"])
+            st.dataframe(df_resumo, use_container_width=True)
+            st.download_button(
+                "Baixar resumo (CSV)",
+                df_resumo.to_csv(index=False).encode("utf-8"),
+                file_name="kpis_resumo.csv",
+                mime="text/csv",
+            )
+        else:
+            st.info("Sem dados para resumir.")
 
     # ------------------------- SÉRIES -------------------------
     with tab_series:
@@ -537,7 +532,7 @@ if run:
                 fig = go.Figure()
                 fig.add_hrect(y0=y_min - 1, y1=anvisa_min, fillcolor="#e53935", opacity=0.12, line_width=0, layer="below")
                 fig.add_hrect(y0=anvisa_min, y1=anvisa_max, fillcolor="#2e7d32", opacity=0.18, line_width=0, layer="below")
-                fig.add_hrect(y0=anvisa_max, y1=y_max + 1, fillcolor="#fb8c00", opacity=0.12, line_width=0, layer="below")
+                fig.add_hrect(y0=y_max, y1=y_max + 1, fillcolor="#fb8c00", opacity=0.12, line_width=0, layer="below")
                 fig.add_hline(y=anvisa_min, line_width=3, line_color="#e53935")
                 fig.add_hline(y=anvisa_max, line_width=3, line_color="#fb8c00")
                 fig.add_trace(go.Scatter(
@@ -545,7 +540,7 @@ if run:
                     line=dict(width=2),
                     hovertemplate="%{x|%Y-%m-%d %H:%M}<br>%{y:.2f} °C<extra></extra>"
                 ))
-                # Pontos fora (deixa leve; se quiser, ative)
+                # Pontos fora (opcional)
                 below = cur[cur["value"] < anvisa_min]
                 above = cur[cur["value"] > anvisa_max]
                 if not below.empty:
