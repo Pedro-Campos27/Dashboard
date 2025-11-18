@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.pyc
+
+# Streamlit artifacts
+.streamlit/
+.cache/
+**/.DS_Store
+
+# Dados pesados / privados
+data/*.csv
+!data/sample/*.csv      # permite só os exemplos pequenos
